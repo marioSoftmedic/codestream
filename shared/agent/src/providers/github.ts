@@ -1,5 +1,4 @@
 "use strict";
-import * as fs from "fs";
 import { GitRemoteLike, GitRepository } from "git/gitService";
 import { GraphQLClient } from "graphql-request";
 import { Response } from "node-fetch";
@@ -1401,6 +1400,7 @@ export class GitHubProvider extends ThirdPartyIssueProviderBase<CSGitHubProvider
 				clientMutationId
 				labelable {
 					... on PullRequest {
+					  updatedAt
 					  labels(first: 10) {
 						nodes {
 						  color
@@ -1455,7 +1455,13 @@ export class GitHubProvider extends ThirdPartyIssueProviderBase<CSGitHubProvider
 
 		return {
 			directives: [
-				{ type: "updatePullRequest", data: { labels: response[method].labelable.labels } },
+				{
+					type: "updatePullRequest",
+					data: {
+						labels: response[method].labelable.labels,
+						updatedAt: response[method].labelable.updatedAt
+					}
+				},
 				{ type: "addNode", data: response[method].labelable.timelineItems.nodes[0] }
 			]
 		};
@@ -1532,7 +1538,10 @@ export class GitHubProvider extends ThirdPartyIssueProviderBase<CSGitHubProvider
 			directives: [
 				{
 					type: "updatePullRequest",
-					data: { assignees: response[method].assignable.assignees }
+					data: {
+						assignees: response[method].assignable.assignees,
+						updatedAt: response[method].assignable.updatedAt
+					}
 				},
 				{
 					type: "addNode",
@@ -1633,6 +1642,7 @@ export class GitHubProvider extends ThirdPartyIssueProviderBase<CSGitHubProvider
 				   subscribable {
 					... on PullRequest {
 						id
+						updatedAt
 						viewerSubscription
 						}
 					}
@@ -2379,6 +2389,7 @@ export class GitHubProvider extends ThirdPartyIssueProviderBase<CSGitHubProvider
 			updatePullRequest(input: {pullRequestId: $pullRequestId, projectIds: $projectIds}) {
 				  clientMutationId
 				  pullRequest {
+					updatedAt
 					projectCards(first: 10) {
 						nodes {
 						  id
@@ -2407,7 +2418,10 @@ export class GitHubProvider extends ThirdPartyIssueProviderBase<CSGitHubProvider
 			directives: [
 				{
 					type: "updatePullRequest",
-					data: { projectCards: response.updatePullRequest.pullRequest.projectCards }
+					data: {
+						projectCards: response.updatePullRequest.pullRequest.projectCards,
+						updatedAt: response.updatePullRequest.pullRequest.updatedAt
+					}
 				}
 			]
 		};
@@ -2553,6 +2567,7 @@ export class GitHubProvider extends ThirdPartyIssueProviderBase<CSGitHubProvider
 					... on PullRequest {
 					  locked
 					  activeLockReason
+					  updatedAt
 					}
 				  }
 				}
@@ -2582,6 +2597,7 @@ export class GitHubProvider extends ThirdPartyIssueProviderBase<CSGitHubProvider
 					... on PullRequest {
 					  locked
 					  activeLockReason
+					  updatedAt
 					}
 				  }
 				}
@@ -3144,6 +3160,12 @@ export class GitHubProvider extends ThirdPartyIssueProviderBase<CSGitHubProvider
 		const query = `mutation AddCommentToPullRequest($subjectId:ID!, $body:String!) {
 				addComment(input: {subjectId: $subjectId, body:$body}) {
 					clientMutationId
+					subject {
+						... on PullRequest {
+						  id
+						  updatedAt
+						}
+					  }
 				   		timelineEdge {
 							node {
 								... on IssueComment {
@@ -3185,7 +3207,10 @@ export class GitHubProvider extends ThirdPartyIssueProviderBase<CSGitHubProvider
 		});
 
 		return {
-			directives: [
+			directives: [ {
+				type:"updatePullRequest",
+				data: response.subject.updatedAt
+			},
 				{
 					type: "addNode",
 					data: response.addComment.timelineEdge.node
