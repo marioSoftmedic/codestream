@@ -36,11 +36,14 @@ export interface ShowPullRequestwNotification {
 	providerId: string;
 	id: string;
 	commentId?: string;
+	url?: string;
 }
 export const ShowPullRequestNotificationType = new NotificationType<
 	ShowPullRequestwNotification,
 	void
 >(`${IpcRoutes.Webview}/pullRequest/show`);
+
+
 
 // TODO: This should be a request to the webview -- not a notification
 export interface ShowStreamNotification {

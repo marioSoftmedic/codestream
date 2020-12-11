@@ -458,6 +458,26 @@ export class WebviewController implements Disposable {
 	}
 
 	@log()
+	async openPullRequestByUrl(url: string): Promise<void> {
+		if (!this.visible) {
+			await this.show();
+		}
+
+		if (!this._webview) {
+			// it's possible that the webview is closing...
+			return;
+		}
+
+		// TODO: Change this to be a request vs a notification
+		this._webview!.notify(ShowPullRequestNotificationType, {
+			providerId: "providerId",
+			id: "id",
+			commentId: "A",
+			url: url
+		});
+	}
+
+	@log()
 	async layoutChanged(): Promise<void> {
 		if (!this._webview) {
 			// it's possible that the webview is closing...
@@ -1259,14 +1279,16 @@ export class WebviewController implements Disposable {
 		} catch {}
 	}
 
-	private async connectToGitHub () {
-		const session = await authentication.getSession("github", ["read:user", "user:email", "repo"], { createIfNone: true });
-		Logger.log(`Connected to GitHub session ${  session.id}`);
+	private async connectToGitHub() {
+		const session = await authentication.getSession("github", ["read:user", "user:email", "repo"], {
+			createIfNone: true
+		});
+		Logger.log(`Connected to GitHub session ${session.id}`);
 		this._providerSessionIds.github = session.id;
 		return { accessToken: session.accessToken, sessionId: session.id };
 	}
 
-	private async disconnectFromGitHub () {
+	private async disconnectFromGitHub() {
 		if (this._providerSessionIds.github) {
 			Logger.log(`Disconnected from GitHub session ${this._providerSessionIds.github}`);
 
@@ -1279,7 +1301,9 @@ export class WebviewController implements Disposable {
 				Logger.log(`Disconnecting from GitHub, session ${this._providerSessionIds.github}`);
 				await (authentication as any).logout("github", this._providerSessionIds.github);
 			} else {
-				Logger.log("logout() method not detected in VSCode engine, unable to invalidate GitHub session");
+				Logger.log(
+					"logout() method not detected in VSCode engine, unable to invalidate GitHub session"
+				);
 			}
 			delete this._providerSessionIds.github;
 		} else {

@@ -13,6 +13,8 @@ import {
 import { ScmTreeDataProvider } from "views/scmTreeDataProvider";
 import { CodeStreamWebviewSidebar } from "webviews/webviewSidebar";
 import { WebviewLike } from "webviews/webviewLike";
+
+import { GitLensApi, OpenPullRequestActionContext } from "./@types/gitlens";
 import { GitExtension } from "./@types/git";
 import { SessionStatusChangedEvent } from "./api/session";
 import { ContextKeys, GlobalState, setContext } from "./common";
@@ -32,7 +34,6 @@ interface BuildInfoMetadata {
 
 export async function activate(context: ExtensionContext) {
 	const start = process.hrtime();
-
 	Configuration.configure(context);
 	Logger.configure(context, configuration.get<TraceLevel>(configuration.name("traceLevel").value));
 
@@ -125,6 +126,45 @@ export async function activate(context: ExtensionContext) {
 			start
 		)} ms`
 	);
+
+	let gitlens =
+		extensions.getExtension<Promise<GitLensApi>>("eamodio.gitlens") ||
+		extensions.getExtension<Promise<GitLensApi>>("eamodio.gitlens-insiders");
+	let api: GitLensApi;
+	if (gitlens && gitlens.isActive) {
+		api = await gitlens.exports;
+		api.registerActionRunner("openPullRequest", {
+			label: "CodeStream",
+			run: function(context: OpenPullRequestActionContext) {
+				console.log(context);
+				if (context.pullRequest.provider === "GitHub") {
+					Container.webview.openPullRequestByUrl(context.pullRequest.url);
+				}
+			}
+		});
+	} else {
+		extensions.onDidChange(() => {
+			(async () => {
+				// Try to look up again
+				gitlens =
+					extensions.getExtension<Promise<GitLensApi>>("eamodio.gitlens") ||
+					extensions.getExtension<Promise<GitLensApi>>("eamodio.gitlens-insiders");
+				let api: GitLensApi;
+				if (gitlens && gitlens.isActive) {
+					api = await gitlens.exports;
+					api.registerActionRunner("openPullRequest", {
+						label: "CodeStream",
+						run: function(context: OpenPullRequestActionContext) {
+							console.log(context);
+							if (context.pullRequest.provider === "GitHub") {
+								Container.webview.openPullRequestByUrl(context.pullRequest.url);
+							}
+						}
+					});
+				}
+			})();
+		});
+	}
 }
 
 export async function deactivate(): Promise<void> {
